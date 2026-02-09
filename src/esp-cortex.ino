@@ -195,12 +195,13 @@ buffer_t gl_uart_buffer = {
 
 
 // put your main code here, to run repeatedly:
-uint32_t led_ts = 0;
+uint32_t retry_ts = 0;
 uint8_t led_state = 1;
 uint8_t stm32_enabled = 0;
 uint32_t blink_per = PERIOD_DISCONNECTED;
 uint8_t udp_pkt_buf[256] = {0};
 
+uint32_t led_ts = 0;
 
 #define NUM_BYTES_HEADER		6	//two bytes sequence, four bytes epoch
 #define NUM_BYTES_SAMPLE_BUFFER (512*sizeof(int32_t))
@@ -275,6 +276,11 @@ void loop()
 //     }
     
     Serial2.write(udp_pkt_buf,len);
+
+    led_state = 1;
+    digitalWrite(gl_prefs.led_pin, led_state);
+    led_ts = ts;  //light indicates complete frame is transmitted
+
     for(int i = 0; i < len; i++)
       udp_pkt_buf[i] = 0;
   }
@@ -292,7 +298,6 @@ void loop()
       
       if(new_byte == 0) //we forward cobs frames without parsing them - making this logic very simple and nice
       {
-        gl_uart_buffer.len = 0; //start over from the beginning
 
         if(gl_prefs.en_fixed_target == 0 && udp.remoteIP() != IPAddress(0,0,0,0))
         {
@@ -309,8 +314,14 @@ void loop()
         }
         udp.write(gl_uart_buffer.buf, gl_uart_buffer.len);
         udp.endPacket();      
+
         serial_pkt_sent = 1;       
+        gl_uart_buffer.len = 0; //delete buffer        
+        led_state = 1;
+        digitalWrite(gl_prefs.led_pin, led_state);
+        led_ts = ts;  //light indicates complete frame is recieved
       }
+
 //       int pld_len = parse_PPP_stream(new_byte, gl_pld_buffer, PAYLOAD_BUFFER_SIZE, gl_unstuffing_buffer, UNSTUFFING_BUFFER_SIZE, &ppp_stuffing_bidx);
   }
 
@@ -714,21 +725,10 @@ void loop()
   }
 
 
-  if(WiFi.status() != WL_CONNECTED)
-  {
-    blink_per = PERIOD_DISCONNECTED;
-  }
-  else
-  {
-    blink_per = PERIOD_CONNECTED;
-  }
 
-
-  if(ts - led_ts > blink_per)
+  if(ts - retry_ts > blink_per)
   {
-    led_ts = ts;
-    digitalWrite(gl_prefs.led_pin, led_state);
-    led_state = ~led_state & 1;
+    retry_ts = ts;
     if(WiFi.status() != WL_CONNECTED)
     {
       //WiFi.reconnect();
@@ -736,7 +736,13 @@ void loop()
       WiFi.begin((const char *)gl_prefs.ssid,(const char *)gl_prefs.password);
       udp.begin(server_address, gl_prefs.port);
 
+      digitalWrite(gl_prefs.led_pin, led_state);
+      led_state = ~led_state & 1;
     }
-
+  }
+  if(ts - led_ts > 1)
+  {
+    led_state = 0;
+    digitalWrite(gl_prefs.led_pin, led_state);
   }
 }
