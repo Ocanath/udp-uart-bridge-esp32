@@ -1,8 +1,11 @@
-# UDP - UART Bridge
+# WiFi - UART Bridge
 
 This is arduino firmware to create a UDP to UART bridge device on an ESP32.
+It has subsequently been updated to support TCP connections as well.
 
 The ESP32 is configured as in _STA mode, i.e. must be connected to a router. The settings are managed over Serial, via a command-line interface.
+
+Frames are assumed to be null terminated - primary use case is COBS (consistent overhead byte stuffing).
 
 ## Configuration Instructions
 
