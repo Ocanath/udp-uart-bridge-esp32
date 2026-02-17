@@ -333,23 +333,29 @@ void loop()
   }
 
   uint8_t serial_pkt_sent = 0;
-  if (tcp_client && tcp_client.connected()) 
+  if (tcp_client && tcp_client.connected())
   {
-    // TCP mode: stream bytes directly, no framing needed
-    while (Serial2.available()) 
+    // TCP mode: null-terminated framing, same as UDP
+    while (Serial2.available())
 	{
       uint8_t new_byte = Serial2.read();
-      tcp_client.write(new_byte);
-      serial_pkt_sent = 1;
+      if (gl_uart_buffer.len >= gl_uart_buffer.size)
+      {
+		gl_uart_buffer.len = 0;
+	  }
+      gl_pld_buffer[gl_uart_buffer.len++] = new_byte;
+
+      if (new_byte == 0)
+	  {
+        tcp_client.write(gl_uart_buffer.buf, gl_uart_buffer.len);
+        serial_pkt_sent = 1;
+        gl_uart_buffer.len = 0;
+        led_state = 1;
+        digitalWrite(gl_prefs.led_pin, led_state);
+        led_ts = ts;
+      }
     }
-    if (serial_pkt_sent) 
-	{
-      led_state = 1;
-      digitalWrite(gl_prefs.led_pin, led_state);
-      led_ts = ts;
-    }
-    gl_uart_buffer.len = 0;  // keep buffer clear while TCP is active
-  } 
+  }
   else 
   {
     // UDP mode: existing null-terminated framing
