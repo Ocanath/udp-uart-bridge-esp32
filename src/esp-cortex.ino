@@ -288,26 +288,36 @@ void loop()
     led_ts = ts;  //light indicates complete frame is transmitted
 
     for(int i = 0; i < len; i++)
+	{
       udp_pkt_buf[i] = 0;
+	}
   }
 
   // Accept new TCP client
   WiFiClient new_client = tcp_server.available();
-  if (new_client) {
-    if (tcp_client) tcp_client.stop();  // drop old client
+  if (new_client) 
+  {
+    if (tcp_client)
+	{
+		 tcp_client.stop();  // drop old client
+	}
     tcp_client = new_client;
     tcp_client.setNoDelay(true);
     Serial.printf("TCP client connected: %s\r\n", tcp_client.remoteIP().toString().c_str());
   }
 
   // Read from TCP client -> forward to UART
-  if (tcp_client && tcp_client.connected()) {
-    while (tcp_client.available()) {
+  if (tcp_client && tcp_client.connected()) 
+  {
+    while (tcp_client.available()) 
+	{
       int n = tcp_client.read(udp_pkt_buf, 255);
-      if (n > 0) {
+      if (n > 0) 
+	  {
         // Check WHO_GOES_THERE
         int cmp = cmd_match((const char *)udp_pkt_buf, "WHO_GOES_THERE");
-        if (cmp > 0) {
+        if (cmp > 0) 
+		{
           tcp_client.write((uint8_t *)gl_prefs.name, strlen(gl_prefs.name));
         }
         Serial2.write(udp_pkt_buf, n);
@@ -316,38 +326,54 @@ void loop()
         led_ts = ts;
       }
     }
-  } else if (tcp_client) {
+  }
+  else if (tcp_client) 
+  {
     tcp_client.stop();  // clean up disconnected client
   }
 
   uint8_t serial_pkt_sent = 0;
-  if (tcp_client && tcp_client.connected()) {
+  if (tcp_client && tcp_client.connected()) 
+  {
     // TCP mode: stream bytes directly, no framing needed
-    while (Serial2.available()) {
+    while (Serial2.available()) 
+	{
       uint8_t new_byte = Serial2.read();
       tcp_client.write(new_byte);
       serial_pkt_sent = 1;
     }
-    if (serial_pkt_sent) {
+    if (serial_pkt_sent) 
+	{
       led_state = 1;
       digitalWrite(gl_prefs.led_pin, led_state);
       led_ts = ts;
     }
     gl_uart_buffer.len = 0;  // keep buffer clear while TCP is active
-  } else {
+  } 
+  else 
+  {
     // UDP mode: existing null-terminated framing
-    while (Serial2.available()) {
+    while (Serial2.available()) 
+	{
       uint8_t new_byte = Serial2.read();
       if (gl_uart_buffer.len >= gl_uart_buffer.size)
-        gl_uart_buffer.len = 0;
+      {
+		gl_uart_buffer.len = 0;
+	  }   
       gl_pld_buffer[gl_uart_buffer.len++] = new_byte;
 
-      if (new_byte == 0) {
+      if (new_byte == 0) 
+	  {
         if (gl_prefs.en_fixed_target == 0 && udp.remoteIP() != IPAddress(0,0,0,0))
-          udp.beginPacket(udp.remoteIP(), udp.remotePort()+gl_prefs.reply_offset);
+        {
+			udp.beginPacket(udp.remoteIP(), udp.remotePort()+gl_prefs.reply_offset);
+		}  
         else if (gl_prefs.en_fixed_target == 0 && udp.remoteIP() == IPAddress(0,0,0,0))
-          udp.beginPacket(IPAddress(255,255,255,255), gl_prefs.port+gl_prefs.reply_offset);
-        else {
+        {
+			udp.beginPacket(IPAddress(255,255,255,255), gl_prefs.port+gl_prefs.reply_offset);
+		}  
+        else 
+		{
           IPAddress remote_ip(gl_prefs.remote_target_ip);
           udp.beginPacket(remote_ip, gl_prefs.port+gl_prefs.reply_offset);
         }
@@ -442,9 +468,13 @@ void loop()
       Serial.printf("UDP server on port: %d\r\n", gl_prefs.port);
       Serial.printf("TCP server on port: %d\r\n", gl_prefs.port);
       if (tcp_client && tcp_client.connected())
+	  {
         Serial.printf("TCP client connected: %s\r\n", tcp_client.remoteIP().toString().c_str());
+	  }
       else
+	  {
         Serial.printf("No TCP client connected\r\n");
+	  }
       Serial.printf("Server Response Offset: %d\r\n", gl_prefs.reply_offset);
       Serial.printf("IP address: %s\r\n", WiFi.localIP().toString().c_str());
       if(gl_prefs.static_ip != IPAddress((uint32_t)0))
