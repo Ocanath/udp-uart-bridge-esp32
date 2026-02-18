@@ -13,7 +13,7 @@
 #include "array_process.h"
 
 #define NRST_PIN 2
-#define LED_PIN 32
+#define LED_PIN 4
 #define BOOT_PIN 22
 
 /*
