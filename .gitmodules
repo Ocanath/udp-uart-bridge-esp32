@@ -1,0 +1,3 @@
+[submodule "external/dartt-protocol"]
+	path = external/dartt-protocol
+	url = https://github.com/ocanath/dartt-protocol

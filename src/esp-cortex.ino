@@ -2,6 +2,10 @@
 #include "network_manager.h"
 #include "console_cmds.h"
 #include "nvs.h"
+#include <ESP32Servo.h>
+#include "control_interface.h"
+#include "dartt.h"
+
 
 /*
 Tested with 3.0.3 esp32 arduino board package by Espressif Systems.
@@ -15,6 +19,64 @@ static buffer_t gl_uart_buffer = {
     .len  = 0
 };
 static uint8_t udp_pkt_buf[UDP_PKT_BUF_SIZE] = {0};
+
+
+// ---------------------------------------------------------------------------
+
+static void dartt_udp_wrapper(dartt_turret_control_t * ctl, uint32_t ts)
+{
+	if(ctl == NULL)
+	{
+		return;
+	}
+    int len = udp.parsePacket();
+    if (len == 0) 
+	{
+		return;
+	}
+	dartt_buffer_t raw = 
+	{
+		.buf = udp_pkt_buf,
+		.size = sizeof(udp_pkt_buf),
+		.len = 0
+	};
+    raw.len = udp.read(raw.buf, raw.size-1);
+	if(raw.len != 0)
+	{
+		payload_layer_msg_t pld_msg = {};
+		int rc = dartt_frame_to_payload(&raw, TYPE_ADDR_CRC_MESSAGE, PAYLOAD_ALIAS, &pld_msg);
+		if(rc == DARTT_PROTOCOL_SUCCESS)
+		{
+			dartt_mem_t ctl_ref = {
+				.buf = (unsigned char * )ctl,
+				.size = sizeof(dartt_turret_control_t)
+			};
+			rc = dartt_parse_general_message(&pld_msg, TYPE_ADDR_CRC_MESSAGE, &ctl_ref, &raw);		//routes reply to 'raw', which is the same as the input buffer - should still be okay though!
+		}
+		if(rc == DARTT_PROTOCOL_SUCCESS)
+		{
+			if (gl_prefs.en_fixed_target == 0 && udp.remoteIP() != IPAddress(0, 0, 0, 0))
+			{
+				udp.beginPacket(udp.remoteIP(), udp.remotePort() + gl_prefs.reply_offset);
+			}   
+			else if (gl_prefs.en_fixed_target == 0 && udp.remoteIP() == IPAddress(0, 0, 0, 0))
+			{
+				udp.beginPacket(IPAddress(255, 255, 255, 255), gl_prefs.port + gl_prefs.reply_offset);
+			}   
+			else
+			{
+				IPAddress remote_ip(gl_prefs.remote_target_ip);
+				udp.beginPacket(remote_ip, gl_prefs.port + gl_prefs.reply_offset);
+			}
+			udp.write(raw.buf, raw.len);
+			udp.endPacket();
+
+			led_state = 1;
+			digitalWrite(gl_prefs.led_pin, led_state);
+			led_ts = ts;
+		}
+	}
+}
 
 // ---------------------------------------------------------------------------
 
@@ -113,9 +175,13 @@ static void handle_uart_to_network(uint32_t ts)
             if (new_byte == 0)
             {
                 if (gl_prefs.en_fixed_target == 0 && udp.remoteIP() != IPAddress(0, 0, 0, 0))
-                    udp.beginPacket(udp.remoteIP(), udp.remotePort() + gl_prefs.reply_offset);
+                {
+ 					udp.beginPacket(udp.remoteIP(), udp.remotePort() + gl_prefs.reply_offset);
+				}   
                 else if (gl_prefs.en_fixed_target == 0 && udp.remoteIP() == IPAddress(0, 0, 0, 0))
-                    udp.beginPacket(IPAddress(255, 255, 255, 255), gl_prefs.port + gl_prefs.reply_offset);
+                {
+ 					udp.beginPacket(IPAddress(255, 255, 255, 255), gl_prefs.port + gl_prefs.reply_offset);
+				}   
                 else
                 {
                     IPAddress remote_ip(gl_prefs.remote_target_ip);
@@ -132,6 +198,15 @@ static void handle_uart_to_network(uint32_t ts)
     }
 }
 
+Servo servos[2];
+dartt_turret_control_t gl_dp = 
+{
+	.s0_us = 1500,
+	.s1_us = 1500,
+	.ms = 0,
+	.action_flag = NO_ACTION
+};
+
 // ---------------------------------------------------------------------------
 
 void setup()
@@ -142,15 +217,24 @@ void setup()
     digitalWrite(BOOT_PIN, 0);
     init_prefs(&preferences, &gl_prefs);
     network_manager_setup(&gl_prefs);
+	servos[0].attach(5);
+	servos[1].attach(6);	//placeholder pin assignments
 }
 
 void loop()
 {
     uint32_t ts = millis();
     handle_i2s_audio();
-    handle_udp(ts);
-    handle_tcp(ts);
-    handle_uart_to_network(ts);
+
+	// handle_udp(ts);	//udp -> uart
+    // handle_tcp(ts);
+	dartt_udp_wrapper(&gl_dp, ts);
+
+	servos[0].writeMicroseconds(gl_dp.s0_us);
+	servos[1].writeMicroseconds(gl_dp.s1_us);
+	gl_dp.ms = ts;
+
+	// handle_uart_to_network(ts);	uart -> udp
     handle_console_cmds();
     handle_wifi_reconnect(&gl_prefs, ts);
     handle_led_timeout(&gl_prefs, ts);
