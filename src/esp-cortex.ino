@@ -217,8 +217,10 @@ void setup()
     digitalWrite(BOOT_PIN, 0);
     init_prefs(&preferences, &gl_prefs);
     network_manager_setup(&gl_prefs);
-	servos[0].attach(5);
-	servos[1].attach(6);	//placeholder pin assignments
+	pinMode(LASER_PIN, OUTPUT);
+	digitalWrite(LASER_PIN, 0);
+	servos[0].attach(26);
+	servos[1].attach(27);	//placeholder pin assignments
 }
 
 void loop()
@@ -229,6 +231,19 @@ void loop()
 	// handle_udp(ts);	//udp -> uart
     // handle_tcp(ts);
 	dartt_udp_wrapper(&gl_dp, ts);
+
+	if(gl_dp.action_flag != NO_ACTION)
+	{
+		if(gl_dp.action_flag == LASER_ON)
+		{
+			digitalWrite(LASER_PIN, 1);
+		}
+		else if(gl_dp.action_flag == LASER_OFF)
+		{
+			digitalWrite(LASER_PIN, 0);
+		}
+		gl_dp.action_flag = NO_ACTION;
+	}
 
 	servos[0].writeMicroseconds(gl_dp.s0_us);
 	servos[1].writeMicroseconds(gl_dp.s1_us);
