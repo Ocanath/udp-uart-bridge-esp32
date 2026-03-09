@@ -12,6 +12,7 @@ typedef struct dartt_turret_control_t
 	int32_t s0_us;
 	int32_t s1_us;
 	uint32_t ms;
+	uint32_t laser_status;
 	uint32_t action_flag;
 }dartt_turret_control_t;
 
