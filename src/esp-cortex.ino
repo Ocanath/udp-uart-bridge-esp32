@@ -117,9 +117,13 @@ static void handle_uart_to_network(uint32_t ts)
 			if (new_byte == 0)
 			{
 				if (gl_prefs.en_fixed_target == 0 && udp.remoteIP() != IPAddress(0, 0, 0, 0))
+				{
 					udp.beginPacket(udp.remoteIP(), udp.remotePort() + gl_prefs.reply_offset);
+				}
 				else if (gl_prefs.en_fixed_target == 0 && udp.remoteIP() == IPAddress(0, 0, 0, 0))
+				{
 					udp.beginPacket(IPAddress(255, 255, 255, 255), gl_prefs.port + gl_prefs.reply_offset);
+				}
 				else
 				{
 					IPAddress remote_ip(gl_prefs.remote_target_ip);
