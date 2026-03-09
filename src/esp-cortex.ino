@@ -24,16 +24,16 @@ static uint8_t udp_decode_buf[UDP_PKT_BUF_SIZE] = {0};
 
 // ---------------------------------------------------------------------------
 
-static void dartt_udp_wrapper(dartt_turret_control_t * ctl, uint32_t ts)
+static bool dartt_udp_wrapper(dartt_turret_control_t * ctl, uint32_t ts)
 {
 	if(ctl == NULL)
 	{
-		return;
+		return false;
 	}
     int len = udp.parsePacket();
     if (len == 0) 
 	{
-		return;
+		return false;
 	}
 	cobs_buf_t cb_encoded = {
 		.buf = udp_pkt_buf,
@@ -52,7 +52,7 @@ static void dartt_udp_wrapper(dartt_turret_control_t * ctl, uint32_t ts)
 	if(cbsrc != COBS_SUCCESS)
 	{
 		Serial.printf("Cobs decode error - returns %d\n",cbsrc);
-		return;
+		return false;
 	}
 	dartt_buffer_t raw = 
 	{
@@ -97,6 +97,7 @@ static void dartt_udp_wrapper(dartt_turret_control_t * ctl, uint32_t ts)
 				led_state = 1;
 				digitalWrite(gl_prefs.led_pin, led_state);
 				led_ts = ts;
+				return true;
 			}
 			else
 			{
@@ -104,6 +105,7 @@ static void dartt_udp_wrapper(dartt_turret_control_t * ctl, uint32_t ts)
 			}
 		}
 	}
+	return false;
 }
 
 // ---------------------------------------------------------------------------
@@ -258,25 +260,28 @@ void loop()
 
 	// handle_udp(ts);	//udp -> uart
     // handle_tcp(ts);
-	dartt_udp_wrapper(&gl_dp, ts);
+	bool gotdata = dartt_udp_wrapper(&gl_dp, ts);
 
-	if(gl_dp.action_flag != NO_ACTION)
+	if(gotdata)
 	{
-		if(gl_dp.action_flag == LASER_ON)
+		if(gl_dp.action_flag != NO_ACTION)
 		{
-			digitalWrite(LASER_PIN, 1);
-			gl_dp.laser_status = 1;
+			if(gl_dp.action_flag == LASER_ON)
+			{
+				digitalWrite(LASER_PIN, 1);
+				gl_dp.laser_status = 1;
+			}
+			else if(gl_dp.action_flag == LASER_OFF)
+			{
+				digitalWrite(LASER_PIN, 0);
+				gl_dp.laser_status = 0;
+			}
+			gl_dp.action_flag = NO_ACTION;
 		}
-		else if(gl_dp.action_flag == LASER_OFF)
-		{
-			digitalWrite(LASER_PIN, 0);
-			gl_dp.laser_status = 0;
-		}
-		gl_dp.action_flag = NO_ACTION;
-	}
 
-	servos[0].writeMicroseconds(gl_dp.s0_us);
-	servos[1].writeMicroseconds(gl_dp.s1_us);
+		servos[0].writeMicroseconds(gl_dp.s0_us);
+		servos[1].writeMicroseconds(gl_dp.s1_us);
+	}
 	gl_dp.ms = ts;
 
 	// handle_uart_to_network(ts);	uart -> udp
