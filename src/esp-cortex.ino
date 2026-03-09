@@ -89,7 +89,9 @@ static void handle_uart_to_network(uint32_t ts)
         {
             uint8_t new_byte = Serial2.read();
             if (gl_uart_buffer.len >= gl_uart_buffer.size)
+            {
                 gl_uart_buffer.len = 0;
+            }
             gl_pld_buffer[gl_uart_buffer.len++] = new_byte;
             if (new_byte == 0)
             {
@@ -108,7 +110,9 @@ static void handle_uart_to_network(uint32_t ts)
         {
             uint8_t new_byte = Serial2.read();
             if (gl_uart_buffer.len >= gl_uart_buffer.size)
+            {
                 gl_uart_buffer.len = 0;
+            }
             gl_pld_buffer[gl_uart_buffer.len++] = new_byte;
             if (new_byte == 0)
             {
