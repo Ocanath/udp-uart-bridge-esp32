@@ -72,7 +72,7 @@ static bool dartt_udp_wrapper(dartt_turret_control_t * ctl, uint32_t ts)
 			};
 			rc = dartt_parse_general_message(&pld_msg, TYPE_SERIAL_MESSAGE, &ctl_ref, &raw);		//routes reply to 'raw', which is the same as the input buffer - should still be okay though!
 		}
-		if(rc == DARTT_PROTOCOL_SUCCESS)
+		if(rc == DARTT_PROTOCOL_SUCCESS && raw.len != 0)
 		{
 			cb_decoded.length = raw.len;	//these point to the same buffer, but we need to ensure the length is updated after parse_general
 			cbsrc = cobs_encode_single_buffer(&cb_decoded);	//weird - this and raw refer to the same memory, so this should work fine
