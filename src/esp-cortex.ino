@@ -17,6 +17,23 @@ static buffer_t gl_uart_buf =
 };
 static uint8_t udp_pkt_buf[UDP_PKT_BUF_SIZE] = {0};
 
+static uint32_t spamts = 0;
+
+// ---------------------------------------------------------------------------
+static void handle_spam(uint32_t ts)
+{
+	if(gl_prefs.spam_target)
+	{
+		if(ts - spamts > 20)
+		{
+			spamts = ts;
+			udp.beginPacket(udp.remoteIP(), udp.remotePort()+gl_prefs.reply_offset);
+			udp.write((uint8_t*)"WAZZUP",6);
+			udp.endPacket();          
+		}
+	}
+}
+
 // ---------------------------------------------------------------------------
 
 static void handle_udp(uint32_t ts)
@@ -43,6 +60,8 @@ static void handle_udp(uint32_t ts)
 	for (int i = 0; i < len; i++)
 		udp_pkt_buf[i] = 0;
 }
+
+// ---------------------------------------------------------------------------
 
 static void handle_tcp(uint32_t ts)
 {
@@ -191,6 +210,7 @@ void loop()
 {
 	uint32_t ts = millis();
 	handle_i2s_audio();
+	handle_spam(ts);
 	handle_udp(ts);
 	handle_tcp(ts);
 	handle_uart_to_network(&gl_uart_buf, ts);
