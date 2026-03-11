@@ -41,7 +41,6 @@ Send the following commands to the device over serial terminal.
 ```bash
 setbaudrate 460800
 setencoding 1
-setledpin 2	#or whatever valid pin has an LED on your board. Default is 32
 ```
 
 
