@@ -3,13 +3,13 @@
 #include <stdint.h>
 
 // Hardware pins
-#define NRST_PIN   2
-#define LED_PIN    32
-#define BOOT_PIN   22
+#define NRST_PIN   1
+#define LED_PIN    21
+#define BOOT_PIN   9
 
 // UART2
-#define UART2_RX_PIN     16
-#define UART2_TX_PIN     17
+#define UART2_RX_PIN     4
+#define UART2_TX_PIN     5
 #define DEFAULT_BAUDRATE 2000000
 
 // Network
