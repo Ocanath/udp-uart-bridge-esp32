@@ -46,9 +46,23 @@ setencoding 1
 
 This configures the hand to recognize PPP frame characters for forwarding uart frames, sets the uart baudrate to the hand default, and gives you led activity that maps to network traffic activity.
 
+### Ability Hand Configuration
+
+The Ability Hand must be in UART mode with PPP byte stuffing enabled. To do this:
+
+```bash
+Wo
+We16
+We46
+We47
+```
+
+- The TX pin of the ESP32 must be wired to hand RX, and the RX pin of the ESP32 must be wired to hand TX. Grounds must obviously be shared.
+
+- A zener diode protection network (equivalent to the one in the hand board - 10ohm resistor with 3.3V zener) is used to prevent destruction of the ESP32 from hot plugging hands. **DO NOT HOT PLUG HANDS**. Make sure the hand is fully powered off before removing from the socket.
+
+- This demo uses an amazon 3.3V buck converter which is wired to VUSB and GND of the ESP32 - it is recommended to source a different converter for this because the one used in the demo is noisy and causes interesting interactions with the built-in 1S charging IC in the Xiao ESP32S3. 
+
 ### Laptop Configuration
 
-
-To get the laptop talking to the udp/uart forwarding server without a shared witi AP, use this excellent [hotspot tool for linux](https://github.com/lakinduakash/linux-wifi-hotspot) that configures everything for you. Windows has builtin utilities for this.
-
-You can run the 
+You must ensure the laptop and bridge are on the same network, and that there are no firewall rules blocking your selected port.
