@@ -1,6 +1,7 @@
 #include "config.h"
 #include "network_manager.h"
 #include "console_cmds.h"
+#include "html_console.h"
 #include "nvs.h"
 
 /*
@@ -204,6 +205,7 @@ void setup()
 	digitalWrite(BOOT_PIN, 0);
 	init_prefs(&preferences, &gl_prefs);
 	network_manager_setup(&gl_prefs);
+	html_console_setup();
 }
 
 void loop()
@@ -214,7 +216,8 @@ void loop()
 	handle_udp(ts);
 	handle_tcp(ts);
 	handle_uart_to_network(&gl_uart_buf, ts);
-	handle_console_cmds();
+	handle_console_cmds_serial();
+	html_console_handle();
 	handle_wifi_reconnect(&gl_prefs, ts);
 	handle_led_timeout(&gl_prefs, ts);
 }
