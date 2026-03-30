@@ -8,48 +8,42 @@
 #include <string.h>
 
 // ---------------------------------------------------------------------------
-// HTTP reply buffer — sized independently of BUFFER_SIZE
+// HTTP chunk callback — registered by html_console.cpp before each command
 // ---------------------------------------------------------------------------
-#define HTTP_REPLY_BUF_SIZE 512
+static console_chunk_cb_t http_chunk_cb = NULL;
 
-static char http_reply_buf[HTTP_REPLY_BUF_SIZE];
-static int  http_reply_len = 0;
-
-void http_reply_reset(void)
+void console_set_http_chunk_cb(console_chunk_cb_t cb)
 {
-    http_reply_len = 0;
-    http_reply_buf[0] = '\0';
+    http_chunk_cb = cb;
 }
-
-const char *http_reply_get(void) { return http_reply_buf; }
 
 // ---------------------------------------------------------------------------
 // Variadic output router
 // ---------------------------------------------------------------------------
 void reply_over_interface(console_iface_t iface, const char *fmt, ...)
 {
+    char buf[BUFFER_SIZE];
     va_list args;
     va_start(args, fmt);
+    int n = vsnprintf(buf, sizeof(buf), fmt, args);
+    va_end(args);
+    if (n <= 0)
+	{
+		 return;
+	}
+    if (n >= (int)sizeof(buf)) 	//this check is >= because of the snprintf null terminator
+	{
+		n = sizeof(buf) - 1;	//make room for the null terminator
+	}
+
     if (iface == CONSOLE_IFACE_SERIAL)
     {
-        // Serial.vprintf(fmt, args);
-		//use vsnprintf and pass to serial - next commit
+        Serial.write(buf, n);
     }
-    else if(iface == CONSOLE_IFACE_HTTP)
+    else if (iface == CONSOLE_IFACE_HTTP && http_chunk_cb != NULL)
     {
-        int remaining = HTTP_REPLY_BUF_SIZE - http_reply_len;
-        if (remaining > 1)
-        {
-            int n = vsnprintf(http_reply_buf + http_reply_len, remaining, fmt, args);
-            if (n > 0)
-                http_reply_len += (n < remaining) ? n : remaining - 1;
-        }
+        http_chunk_cb(buf, (size_t)n);
     }
-	else
-	{
-		//throw error
-	}
-    va_end(args);
 }
 
 // ---------------------------------------------------------------------------
@@ -477,8 +471,9 @@ void handle_console_cmds(console_cmd_t *input, console_iface_t iface)
         reply_over_interface(iface, "Saved %d bytes\r\n", nb);
     }
 
-    for (int i = 0; i < BUFFER_SIZE; i++)
+    for (size_t i = 0; i < input->size; i++)
         input->buf[i] = 0;
+    input->len = 0;
     input->parsed = 1;
 }
 

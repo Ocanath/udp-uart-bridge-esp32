@@ -44,6 +44,11 @@ static void handle_root(void)
     http_server.send_P(200, "text/html", HTML_PAGE);
 }
 
+static void send_chunk(const char *data, size_t len)
+{
+    http_server.sendContent(data, len);
+}
+
 static void handle_cmd(void)
 {
     if (!http_server.hasArg("plain"))
@@ -54,19 +59,20 @@ static void handle_cmd(void)
     String body = http_server.arg("plain");
 
     // Load command into shared input buffer
-    memset(gl_console_cmd.buf, 0, BUFFER_SIZE);
-    int len = body.length();
-    if (len > BUFFER_SIZE - 2) len = BUFFER_SIZE - 2;
+    memset(gl_console_cmd.buf, 0, gl_console_cmd.size);
+    size_t len = body.length();
+    if (len > gl_console_cmd.size - 2) len = gl_console_cmd.size - 2;
     memcpy(gl_console_cmd.buf, body.c_str(), len);
     gl_console_cmd.buf[len] = '\r';   // match serial CR convention
     gl_console_cmd.len    = len + 1;
     gl_console_cmd.parsed = 0;
 
-    http_reply_reset();
+    console_set_http_chunk_cb(send_chunk);
+    http_server.setContentLength(CONTENT_LENGTH_UNKNOWN);
+    http_server.send(200, "text/plain", "");
     handle_console_cmds(&gl_console_cmd, CONSOLE_IFACE_HTTP);
-
-    const char *reply = http_reply_get();
-    http_server.send(200, "text/plain", (*reply != '\0') ? reply : "ok");
+    http_server.sendContent("");       // end chunked response
+    console_set_http_chunk_cb(NULL);
 }
 
 void html_console_setup(void)

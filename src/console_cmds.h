@@ -9,12 +9,12 @@ typedef enum {
 
 int  cmd_match(const char *in, const char *cmd);
 
+// Callback type for streaming HTTP chunks — registered by html_console.cpp
+typedef void (*console_chunk_cb_t)(const char *data, size_t len);
+void console_set_http_chunk_cb(console_chunk_cb_t cb);
+
 // Variadic output router — drops in where Serial.printf was called
 void reply_over_interface(console_iface_t iface, const char *fmt, ...);
-
-// HTTP reply buffer accessors (used by html_console.cpp)
-void        http_reply_reset(void);
-const char *http_reply_get(void);
 
 // Core handler — iface selects where output goes
 void handle_console_cmds(console_cmd_t *input, console_iface_t iface);
